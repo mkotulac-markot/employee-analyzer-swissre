@@ -16,7 +16,7 @@ public final class FileUtils {
         ClassLoader classLoader = FileUtils.class.getClassLoader();
         URL resource = classLoader.getResource(fileName);
         if (resource == null) {
-            throw new FileNotFoundException("File: +" + fileName + " not found");
+            throw new FileNotFoundException("File: " + fileName + " not found");
         }
         try {
             return new File(resource.toURI());

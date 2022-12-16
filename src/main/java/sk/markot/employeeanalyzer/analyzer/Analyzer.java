@@ -9,7 +9,11 @@ import sk.markot.employeeanalyzer.data.Node;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+import static sk.markot.employeeanalyzer.analyzer.AnalyzeResultType.*;
 
 public class Analyzer {
 
@@ -21,23 +25,28 @@ public class Analyzer {
         this.settings = new Settings(properties);
     }
 
-    public void analyzeReportingLine(Node<Employee> employeesStructure) {
+    public AnalyzeResult analyzeReportingLine(Node<Employee> employeesStructure) {
         Map<Employee, Integer> reportingLinesMap = analyzeReportingLine(employeesStructure, null, new HashMap<>());
 
+        AnalyzeResult result = new AnalyzeResult();
         for (Map.Entry<Employee, Integer> entry : reportingLinesMap.entrySet()) {
             Employee employee = entry.getKey();
             Integer currentEmployeeManagersInRow = entry.getValue() - 1;
             Integer maxEmployeeManagersInRow = settings.getMaxEmployeeManagersInRow();
 
             if (currentEmployeeManagersInRow > maxEmployeeManagersInRow) {
+                result.addEmployee(REPORTING_LINE, employee.getId());
                 logger.warn("Employee id {}, {} {} has too long reporting line. Exceeded by {}",
                         employee.getId(), employee.getFirstName(), employee.getLastName(),
                         currentEmployeeManagersInRow - maxEmployeeManagersInRow);
             }
         }
+
+        return result;
     }
 
-    public void analyzeManagersSalary(Node<Employee> employeesStructure) {
+    public AnalyzeResult analyzeManagersSalary(Node<Employee> employeesStructure) {
+        AnalyzeResult result = new AnalyzeResult();
         NumberFormat currency = NumberFormat.getCurrencyInstance();
         Map<Employee, BigDecimal> managersSubdirectsAverageSalary = analyzeManagersSalary(employeesStructure, new HashMap<>());
 
@@ -48,6 +57,7 @@ public class Analyzer {
             BigDecimal maxSalary = calculateMaxSalary(entry.getValue());
 
             if (salary.compareTo(minSalary) < 1) {
+                result.addEmployee(MIN_SALARY, employee.getId());
                 logger.warn("Manager id {}, {} {} should earn more than {}. By {}",
                         employee.getId(),
                         employee.getFirstName(),
@@ -55,6 +65,7 @@ public class Analyzer {
                         currency.format(minSalary),
                         currency.format(minSalary.subtract(salary)));
             } else if (salary.compareTo(maxSalary) > 0) {
+                result.addEmployee(MAX_SALARY, employee.getId());
                 logger.warn("Manager id {}, {} {} should earn less than {}. By {}",
                         employee.getId(),
                         employee.getFirstName(),
@@ -62,8 +73,9 @@ public class Analyzer {
                         currency.format(maxSalary),
                         currency.format(salary.subtract(maxSalary)));
             }
-
         }
+
+        return result;
     }
 
     private BigDecimal calculateMaxSalary(BigDecimal averageSalary) {
